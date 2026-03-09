@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Todo App",
+  title: "Mirko's Todo List",
   description: "A simple todo list app",
 };
 
