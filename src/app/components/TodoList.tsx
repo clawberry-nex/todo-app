@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface Todo {
   id: number;
@@ -11,22 +11,44 @@ interface Todo {
 export default function TodoList() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  const addTodo = () => {
+  useEffect(() => {
+    fetch("/api/todos")
+      .then((res) => res.json())
+      .then((data) => {
+        setTodos(data);
+        setLoading(false);
+      });
+  }, []);
+
+  const addTodo = async () => {
     const trimmed = input.trim();
     if (!trimmed) return;
-    setTodos([...todos, { id: Date.now(), text: trimmed, completed: false }]);
     setInput("");
+    const res = await fetch("/api/todos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: trimmed }),
+    });
+    const todo = await res.json();
+    setTodos([...todos, todo]);
   };
 
-  const toggleTodo = (id: number) => {
+  const toggleTodo = async (id: number, completed: boolean) => {
     setTodos(
-      todos.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
+      todos.map((t) => (t.id === id ? { ...t, completed: !completed } : t))
     );
+    await fetch(`/api/todos/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ completed: !completed }),
+    });
   };
 
-  const deleteTodo = (id: number) => {
+  const deleteTodo = async (id: number) => {
     setTodos(todos.filter((t) => t.id !== id));
+    await fetch(`/api/todos/${id}`, { method: "DELETE" });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -34,6 +56,16 @@ export default function TodoList() {
   };
 
   const remaining = todos.filter((t) => !t.completed).length;
+
+  if (loading) {
+    return (
+      <div className="w-full max-w-md mx-auto">
+        <p className="text-center text-sm text-zinc-400 dark:text-zinc-500 py-8">
+          Loading...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-md mx-auto">
@@ -69,7 +101,7 @@ export default function TodoList() {
                 className="group flex items-center gap-3 rounded-lg border border-zinc-200 bg-white px-4 py-3 transition-colors dark:border-zinc-800 dark:bg-zinc-900"
               >
                 <button
-                  onClick={() => toggleTodo(todo.id)}
+                  onClick={() => toggleTodo(todo.id, todo.completed)}
                   className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
                     todo.completed
                       ? "border-emerald-500 bg-emerald-500 text-white"
